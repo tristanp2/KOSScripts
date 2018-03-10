@@ -54,7 +54,7 @@ lock steering to steer_val.
 lock throttle to thrott.
 
 print "making initial approach".
-until dest_vec:MAG < 75 {
+until dest_vec:MAG < 20 {
 	print "dist: " + dest_vec:MAG at (0,1).
 	print "speed error: " + speed_error at (0,2).
 	print "goal speed: " + goal_speed at (0,3).
