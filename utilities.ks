@@ -1,7 +1,7 @@
 declare function clamp {
 	declare parameter value.
-	declare parameter range_low.
-	declare parameter range_high.
+	declare parameter range_low to 0.
+	declare parameter range_high to 1.
 	
 	if value < range_low{
 		return range_low.
@@ -33,5 +33,5 @@ declare function flameoutoccured {
 
 declare function steeringsettled {
 	declare parameter max_error to 5.
-	return steeringmanager:angleerror < max_error.
+	return abs(steeringmanager:angleerror) < max_error and abs(steeringmanager:rollerror) <  max_error.
 }
