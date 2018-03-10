@@ -98,7 +98,7 @@ set time_diff to (ang_diff/360) * ship:obt:period.
 print "time diff: " + time_diff / 60 + " minutes".
 set real_time_diff to time_diff.
 set orbits_required to 1.
-set max_period_shift to 300.
+set max_period_shift to ship:obt:period / 4.
 until real_time_diff < max_period_shift{
 	set orbits_required to orbits_required + 1.
 	set real_time_diff to time_diff / orbits_required.
@@ -189,8 +189,10 @@ until target_dist < 4000{
 		wait 4.
 	}
 	set steer_val to burn_vec.
-	set thrott to min(0.5, vec_error + speed_prop).
-	if thrott  < 0.05{
+	if steeringsettled() {
+		set thrott to min(0.5, vec_error + speed_prop).
+	}
+	else {
 		set thrott to 0.
 	}
 	print "vec_error: " + vec_error at (0,0).
@@ -204,8 +206,8 @@ set thrott to 0.
 clearscreen.
 set max_dist to target_dist.
 set max_speed to ship_speed.
-set max_approach to 100.
-lock goal_speed to min(max_approach, max_approach * (target_dist / 500)).
+set max_approach to 50.
+lock goal_speed to min(max_approach, max_approach * (target_dist / 1500)).
 wait 2.
 set steer_val to burn_vec.
 wait 3.
@@ -214,8 +216,10 @@ clearscreen.
 print "zeroing in...".
 until target_dist < 50{
 	set steer_val to burn_vec.
-	set thrott to abs(speed_error) + vec_error.
-	if thrott < 0.05{
+	if steeringsettled() {
+		set thrott to abs(speed_error) + vec_error.
+	}
+	else {
 		set thrott to 0.
 	}
 	print "speed_error: " + speed_error at (0,1).
@@ -225,7 +229,12 @@ until target_dist < 50{
 clearscreen.
 print "killing relative velocity".
 until relative_velocity:mag < 0.01{
-	set thrott to relative_velocity:mag / 20.
+	if steeringsettled(10) {
+		set thrott to relative_velocity:mag / 20.
+	}
+	else {
+		set thrott to 0.
+	}
 	set steer_val to -relative_velocity.
 }
 print "we r ther".
