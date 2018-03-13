@@ -119,9 +119,9 @@ set eta_pid:setpoint to 10.0.
 clearscreen.
 lock diff to (dest_alt - ship:periapsis) / dest_alt.
 set thrott to 0.75.
-set start_apo to 0.
+set start_apo to ship:apoapsis.
 lock apo_diff to ship:apoapsis - start_apo.
-until ship:periapsis >= (dest_alt - 100) or apo_diff > 2000 {
+until ship:periapsis >= (dest_alt - 100) or apo_diff > 1000 {
 	set thrott to max(diff, 0.05).
 	print "waiting for periapsis to reach: " + (dest_alt - 1000) + " or " + (ship:altitude - 100) at (0,0).
 	print ship:periapsis at (0,1).
