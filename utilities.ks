@@ -46,7 +46,7 @@ declare function steeringsettled {
 //if no value is found in < iter_limit iterations, the function returns an empty lexicon
 function impact_pos_eta {
 	declare parameter iter_limit to 50.
-	declare parameter min_step to 0.01
+	declare parameter min_step to 0.01.
 	
 	local time_step_base to 60.
 	local dir to 1.
