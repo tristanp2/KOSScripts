@@ -1,10 +1,11 @@
 runpath("utilities.ks").
 
+declare parameter descent_stage to 1.
+
 
 set sas to false.
 set rcs to false.
 set target_periapsis to 40000.
-set descent_stage to 1.
 set thrott to 0.
 lock throttle to thrott.
 
