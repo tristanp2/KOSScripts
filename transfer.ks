@@ -4,6 +4,8 @@ declare parameter target_body_name.
 
 runpath("utilities.ks").
 
+enable_stage_trigger().
+
 set target_body to body(target_body_name).
 set source_body to ship:orbit:body.
 
