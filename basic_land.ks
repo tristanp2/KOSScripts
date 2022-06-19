@@ -1,6 +1,25 @@
 runpath("utilities.ks").
 
-print "update 4".
+function find_minimum_surface_angle_geoposition {
+    declare parameter sample_pos_list.
+    declare parameter sample_dist to 1000.
+
+
+    local min_sampled_ang to 1000.
+    local min_sampled_pos to v(0,0,0).
+
+    for sample_pos in sample_pos_list {
+        local sample_ang to sample_surface_angle(sample_pos, sample_dist / 2).
+        if sample_ang < min_sampled_ang {
+            set min_sampled_ang to sample_ang.
+            set min_sampled_pos to sample_pos.
+        }
+    }
+    
+    return ship:body:geopositionof(min_sampled_pos).
+}
+
+print "update 6".
 ff_to_next_transition().
 
 print "transferring".
@@ -42,8 +61,8 @@ wait until steeringsettled().
 set target_periapsis to 12000.
 lock thrott to clamp(abs(ship:orbit:periapsis - target_periapsis) / target_periapsis, 0.1, 0.5). 
 
-print "raising periapsis".
-wait until ship:orbit:periapsis > 12000.
+print "raising periapsis to " + target_periapsis.
+wait until ship:orbit:periapsis > target_periapsis.
 
 set thrott to 0.
 
@@ -95,168 +114,65 @@ lock horizontal_velocity to vxcl(ship:up:forevector, surface_velocity).
 lock horizontal_speed to horizontal_velocity:mag.
 lock ship_accel to ship:availablethrust / ship:mass.
 
-lock vertical_kill_time to vertical_speed / ship_accel. 
-lock horizontal_kill_time to horizontal_speed / ship_accel.
+lock vertical_kill_time to abs(vertical_speed) / ship_accel. 
+lock horizontal_kill_time to abs(horizontal_speed) / ship_accel.
 lock total_kill_time to vertical_kill_time + horizontal_kill_time.
 
 lock center_dist to ship:altitude + ship:body:radius. 
 lock g_accel to ship:body:mu / center_dist^2. 
-lock altitude to alt:radar.
+lock altitude to max(alt:radar - 1000, 0).
 lock final_speed to sqrt(vertical_speed^2 + 2 * g_accel * altitude).
 lock average_speed to 0.5 * (final_speed + vertical_speed).
 lock impact_eta to (final_speed - vertical_speed) / g_accel.
 
-until alt:radar < 12000 {
-    if alt:radar > 20000 {
-        set_timewarp(50).
-    } 
-    else {
-        set_timewarp(10).
-    }
-}
-set_timewarp(1).
-
-set target_vertical_speed to 10.
-lock vertical_correction_vec to ship:up:forevector * clamp((vertical_speed - target_vertical_speed) / 20, 0, 1).
-lock steering to vertical_correction_vec - horizontal_velocity:normalized.
-
-wait 1.
-wait until steeringsettled().
-
-lock throttle to max((horizontal_speed - 50) / 5, 0.1).
-wait until horizontal_speed < 50.
-
-set throttle to 0.
-
-lock steering to -surface_velocity.
-
-wait until steeringsettled().
-
 lock forward_vec to horizontal_velocity:normalized.
 lock side_vec to vcrs(ship:up:forevector, horizontal_velocity):normalized.
 
-function find_minimum_surface_angle_geoposition {
-    declare parameter sample_pos_list.
-    declare parameter sample_dist to 1000.
-
-
-    local min_sampled_ang to 1000.
-    local min_sampled_pos to v(0,0,0).
-
-    for sample_pos in sample_pos_list {
-        local sample_ang to sample_surface_angle(sample_pos, sample_dist / 2).
-        if sample_ang < min_sampled_ang {
-            set min_sampled_ang to sample_ang.
-            set min_sampled_pos to sample_pos.
-        }
-    }
-    
-    return ship:body:geopositionof(min_sampled_pos).
-}
-
-set sample_pos_list to list(). 
-sample_pos_list:add(ship:position + forward_vec * sample_dist).
-sample_pos_list:add(ship:position + (forward_vec + side_vec * 0.5) * sample_dist).
-sample_pos_list:add(ship:position + (forward_vec - side_vec * 0.5) * sample_dist).
-
-set target_geopos to ship:body:geopositionof(min_sampled_pos).
-lock target_pos to target_geopos:position.
-
-set target_arrow to vecdraw(ship:position, target_pos, RGB(1,0,0), "target", 1.0, true, 0.2, true).
-
-lock target_pos_horizontal_vector to vxcl(target_pos - ship:position, ship:up:forevector).
-lock target_pos_target_vel to (target_pos_horizontal_vector:mag * 2 / impact_eta) * target_pos_horizontal_vector 
-    + vertical_velocity. 
-lock correction_vec to target_pos_target_vel - surface_velocity.
-lock steering to correction_vec.
-
-wait until steeringsettled().
-
-clearscreen.
-until correction_vec:mag < 1 {
-    set throttle to correction_vec:mag / 10.
-    set target_arrow:vec to target_pos.
-    print "correction vec mag: " + correction_vec:mag at (0,0).
-    wait 0.1.
-}
 set throttle to 0.
-
-lock steering to -horizontal_velocity.
+lock speed_ratio to min(max(horizontal_speed - vertical_speed, 0) / (horizontal_speed + vertical_speed), 1).
+lock steer_val to (1 - speed_ratio) * ship:up:forevector:normalized 
+        - speed_ratio
+        * horizontal_velocity:normalized.
+lock surface_speed to surface_velocity:mag.
+set steering to steer_val.
 wait until steeringsettled().
 
-lock target_pos_eta to target_pos_horizontal_vector:mag / horizontal_velocity:mag.
-lock target_alt to (target_pos + ship:up:forevector * 1000):mag.
-lock target_alt_eta to (target_alt - center_dist) / vertical_speed.
-lock horizontal_kill_time to horizontal_velocity:mag / ship_accel. 
-lock vertical_kill_time to vertical_speed / ship_accel.
+until altitude < 2000  {
+    set steering to steer_val.
 
-
-clearscreen.
-until target_pos_eta < 2 * horizontal_kill_time {
-    if target_alt_eta > target_pos_eta / 2 {
-        set_timewarp(1).
-        set steering to ship:up:forevector.
-        if steeringsettled() {
-            set throttle to max((target_alt_eta - target_pos_eta / 2) / 5, 0.1).
-        }
+    if impact_eta >  2 * total_kill_time {
+        set throttle to 0.
+        set_warp_for_eta(impact_eta - 1.5 * total_kill_time).
+        print "waiting        " at (0,7).
     }
     else {
-        set throttle to 0.
-        set_warp_for_eta(target_pos_eta - horizontal_kill_time).
-    }
-    set target_arrow:vec to target_pos.
-    print "target pos eta: " + target_pos_eta at (0,0).
-    print "target alt eta: " + target_alt_eta at (0,1).
-    print "horizontal kill time: " + horizontal_kill_time at(0,2).
-    print "vertical kill time: " + vertical_kill_time at (0,3).
-    print "target pos distance: " + target_pos_horizontal_vector:mag at (0,4).
-    print "target_alt: " + target_alt at (0,5).
-    wait 0.1.
-}
-
-lock steering to -horizontal_velocity.
-wait 1.
-wait until steeringsettled().
-
-until horizontal_velocity:mag < 2 {
-    set throttle to max((target_pos_eta - horizontal_kill_time) / 2, 0).
-    print "target pos eta: " + target_pos_eta at (0,0).
-    print "horizontal kill time: " + horizontal_kill_time at (0,1).
-    print "horizontal speed: " + horizontal_velocity:mag at (0,2).
-    wait 0.1.
-}
-
-set throttle to 0.
-
-until impact_eta < 1.5 * total_kill_time  {
-    if impact_eta > 4 * total_kill_time {
-        set_warp_for_eta(impact_eta - 2 * total_kill_time).
-        print "impact eta: " + impact_eta at (0,3).
-        print "total kill time: " + total_kill_time at(0,4).
-        print "impact speed: " + final_speed at (0,5).
-        print "g accel: " + g_accel at (0,6).
-    }
-    else if horizontal_velocity > 10 {
+        print "adjusting speed" at (0,7).
         set_timewarp(1). 
-        set steering to -horizontal_velocity.
-        if steeringsettled() {
-            set throttle to max(horizontal_speed / 5, 1).
+
+        if steeringmanager:rollerror < 5 {
+            set throttle to min((3 * total_kill_time - impact_eta) / ship_accel, 1).
         } 
         else {
             set throttle to 0.
         }
     }
-    else {
-        set throttle to 0.
-    }
+
+    print "impact eta: " + impact_eta at (0,3).
+    print "total kill time: " + total_kill_time at(0,4).
+    print "impact speed: " + final_speed at (0,5).
+    print "g accel: " + g_accel at (0,6).
+    print "vertical speed: " + vertical_speed at (0,8).
+    print "horizontal speed: " + horizontal_speed at (0,9).
 
     wait 0.1.
 }
 
 set_timewarp(1).
+print "ded".
 
 lock surface_kill_time to surface_velocity:mag / ship_accel.
-lock steering to ship:up:forevector:normalized - (horizontal_speed / vertical_speed) * horizontal_velocity:normalized.
+lock steering to clamp(-vertical_speed, 0, 1) * ship:up:forevector:normalized - min(0.5, abs(horizontal_speed / vertical_speed)) 
+        * horizontal_velocity:normalized.
 
 wait 1.
 wait until steeringsettled().
@@ -302,6 +218,7 @@ until ship:status = "LANDED" {
     print "total kill time: " + total_kill_time at (0,4).
     print "target speed: " + target_speed at (0,5).
     print "surface speed: " + surface_velocity:mag at(0,6).
+    print "vertical speed: " + vertical_speed at (0,9).
     wait 0.1.
 }
 
