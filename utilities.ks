@@ -134,6 +134,14 @@ declare function flameoutoccured {
 	return false.
 }
 
+declare function enable_stage_trigger {
+    when stage:ready and (flameoutoccured(englist) or maxthrust = 0) then{
+        stage.
+        list engines in englist.
+        return true.
+    }
+}
+
 declare function steeringsettled {
 	declare parameter max_error to 5.
 	return abs(steeringmanager:angleerror) < max_error and abs(steeringmanager:rollerror) <  max_error.

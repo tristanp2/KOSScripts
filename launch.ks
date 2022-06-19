@@ -20,11 +20,8 @@ from {local x is 5.} until x = 0 step {set x to x-1.} do {
 
 lock ship_speed to ship:velocity:surface:mag.
 
-when stage:ready and (flameoutoccured(englist) or maxthrust = 0) then{
-	stage.
-	list engines in englist.
-    return launch_ongoing.
-}
+enable_stage_trigger().
+
 set dest_alt to 80000.
 
 set apo_time to 90.
