@@ -2,7 +2,6 @@ runpath("utilities.ks").
 
 declare parameter descent_stage to 1.
 
-
 set sas to false.
 set rcs to false.
 set target_periapsis to 40000.

@@ -43,6 +43,7 @@ lock angle_diff to abs(current_angle - phase_angle).
 wait 3.
 clearscreen.
 
+set kuniverse:timewarp:mode to "RAILS".
 set kuniverse:timewarp:rate to 50.
 until angle_diff < 1 {
     if angle_diff < 20 {
