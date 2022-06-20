@@ -135,6 +135,7 @@ declare function flameoutoccured {
 }
 
 declare function enable_stage_trigger {
+    list engines in englist.
     when stage:ready and (flameoutoccured(englist) or maxthrust = 0) then{
         stage.
         list engines in englist.
