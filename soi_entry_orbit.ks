@@ -78,13 +78,14 @@ wait 2.
 
 clearscreen.
 print "warping to periapsis".
-ff_to_periapsis().
+ff_to_periapsis(30).
 
 set target_periapsis to ship:orbit:periapsis - 1000.
 
 set_timewarp(1).
 
-wait 2.
+set steering to ship:retrograde.
+
 wait until steeringsettled().
 
 lock surface_velocity to ship:orbit:velocity:surface.
@@ -92,33 +93,33 @@ lock vertical_speed to vdot(ship:up:forevector, surface_velocity).
 
 lock vertical_velocity to vertical_speed * ship:up:forevector.
 
-set steering to ship:retrograde.
 clearscreen.
 
-set throttle to 1.
-wait until ship:orbit:apoapsis > 0.
-set throttle to 0.
+lock circular_speed to sqrt(ship:body:mu / (ship:altitude + ship:body:radius)).
+lock target_velocity to circular_speed * vxcl(ship:up:forevector, ship:prograde:forevector).
+lock correction_vector to target_velocity - ship:velocity:orbit.
+lock correction_time to correction_vector:mag / ship_accel.
+lock steer_val to correction_vector. 
+
+print "calculated circular speed: " + circular_speed.
+
+wait until eta:periapsis < correction_time.
 
 print "circularizing...".
 
-wait until steeringsettled().
-set initial_periapsis to ship:orbit:periapsis.
-lock target_accel to 5 * clamp(abs(ship:orbit:periapsis - target_periapsis) /  target_periapsis, 0, 1).
+lock thrott to clamp(correction_time / 2, 0, 1).
 
-until ship:orbit:periapsis < target_periapsis  {
-    if vertical_speed  < 0 {
-        set steering to ship:retrograde:forevector.
-    }
-    else {
-        set steering to ship:retrograde:forevector - 0.05 * vertical_velocity.
-    }
-
+until correction_vector:mag < 0.1 {
     set throttle to thrott.
+    set steering to steer_val.
 
-    print "apoapsis: " + ship:orbit:apoapsis at(0,1).
-    print "periapsis: " + ship:orbit:periapsis at (0,2).
-    print "thrott: " + thrott at (0,3).
-    print "vertical speed: " + vertical_speed at (0,4).
+    print "apoapsis: " + ship:orbit:apoapsis at(0,2).
+    print "periapsis: " + ship:orbit:periapsis at (0,3).
+    print "thrott: " + thrott at (0,4).
+    print "vertical speed: " + vertical_speed at (0,5).
+    print "circular speed: " + circular_speed at (0,6).
+    print "correction mag: " + correction_vector:mag at (0,7).
+    print "correction time: " + correction_time at (0,8).
     wait 0.001.
 }
 
