@@ -4,8 +4,15 @@ print "script_version: " + script_version.
 set sas to false.
 
 declare parameter target_vessel_name.
+declare parameter descent_stage to 2.
+
+until stage:number <= descent_stage {
+    stage.
+    wait 1.
+}
 
 runpath("utilities.ks").
+enable_stage_trigger().
 
 clearscreen.
 print "starting descent".
@@ -82,13 +89,17 @@ lock ship_accel to ship:availablethrust / ship:mass.
 lock vertical_kill_time to abs(vertical_speed) / ship_accel. 
 lock horizontal_kill_time to abs(horizontal_speed) / ship_accel.
 lock total_kill_time to vertical_kill_time + horizontal_kill_time.
-print "wait until " + (total_kill_time * 1.2) + "s to periapsis".
 
-until eta:periapsis < total_kill_time * 1.2 {
+lock surface_speed to surface_velocity:mag.
+lock target_pos to target_vessel:position + target_vessel:up:forevector * 1500.
+lock target_eta to target_pos:mag / surface_speed.
+
+until target_eta < total_kill_time * 1.2 {
     set_timewarp(eta:periapsis - total_kill_time * 1.2).
 
 
-    print "eta:periapsis: " + eta:periapsis at (0,2).
+    print "wait until " + (total_kill_time * 1.2) + "s to target" at (0,1).
+    print "target_eta: " + target_eta at (0,2).
     wait 0.1.
 }
 
@@ -105,32 +116,67 @@ lock forward_vec to horizontal_velocity:normalized.
 lock side_vec to vcrs(ship:up:forevector, horizontal_velocity):normalized.
 
 set throttle to 0.
-lock surface_speed to surface_velocity:mag.
 set target_altitude to ship:altitude.
-lock target_pos to target_vessel:position + target_vessel:up:forevector * 1500.
-lock target_eta to target_pos:mag / surface_speed.
-lock vertical_factor to clamp(vertical_kill_time / target_eta + (target_altitude - ship:altitude) / target_altitude, 0, 1).
-lock horizontal_factor to clamp((horizontal_kill_time - target_eta) / 5, 0, 1).
-lock steer_val to  vertical_factor * ship:up:forevector:normalized 
-        - horizontal_factor
-        * horizontal_velocity:normalized.
+
+lock target_velocity to vxcl(ship:up:forevector, (target_eta * ship_accel) * target_pos:normalized).
+lock correction_vector to target_velocity - surface_velocity.
+lock steer_val to lookdirup(correction_vector, ship:facing:topvector).
+
 wait until steeringsettled().
 clearscreen.
 
 until horizontal_speed < 10 {
-    set throttle to clamp(vertical_factor + horizontal_factor, 0, 1)..
+    set throttle to clamp(correction_vector:mag / 30, 0, 1).
     set steering to steer_val.
 
-    if target_eta < 20 {
-        lock horizontal_factor to horizontal_speed / 10.
-    }
-
     print "horizontal_speed: " + horizontal_speed at (0,0).
-    print "vertical_factor: " + vertical_factor at (0,1).
-    print "horizontal_factor: " + horizontal_factor at (0,2).
+    print "vertical_speed: " + vertical_speed at (0,1).
+    print "correction mag: " + correction_vector:mag at (0,2).
     print "target_eta: " + target_eta at (0,3).
     print "vertical kill time: " + vertical_kill_time at (0,4).
     print "horizontal kill time: " + horizontal_kill_time at (0,5).
+
+    wait 0.1.
+}
+
+clearscreen.
+print "final descent".
+legs on.
+
+lock target_position to target_vessel:position + target_vessel:north:forevector * 10.
+lock target_distance to target_position:mag.
+lock horizontal_target_vector to vxcl(target_vessel:up:forevector, target_position).
+lock horizontal_target_distance to horizontal_target_vector:mag.
+
+lock target_horizontal_speed to clamp(horizontal_target_distance / 10, 0 , 100).
+lock target_horizontal_velocity to target_horizontal_speed * horizontal_target_vector:normalized.
+
+
+lock target_vertical_speed to clamp(horizontal_target_distance / 10 - 2, -1, 0).
+
+lock target_velocity to target_horizontal_velocity + target_vertical_speed * ship:up:forevector.
+lock correction_vector to target_velocity - surface_velocity.
+
+lock steer_val to lookdirup(correction_vector, ship:facing:topvector).
+
+until ship:status = "LANDED" {
+    print "target_distance: " + target_distance at (0,1).
+    print "horizontal distance: " + horizontal_target_distance at (0,2).
+    print "correction vector mag: " + correction_vector:mag at (0,3).
+    print "vertical speed: " + vertical_speed at (0,4).
+    print "target vertical speed: " + target_vertical_speed at (0,5).
+    print "horizontal speed: " + horizontal_speed at (0,6).
+    print "target_horizontal_speed: " + target_horizontal_speed at (0,7).
+    if horizontal_target_distance < 10 {
+        set ideal_vertical_speed to -target_distance / 10.
+        set target_vertical_speed to choose ideal_vertical_speed if ideal_vertical_speed > vertical_speed else vertical_speed.
+    }
+    else {
+        set target_vertical_speed to clamp(horizontal_target_distance / 10 - 2, -1, 0).
+    }
+
+    set throttle to clamp(correction_vector:mag / 5, 0, 1).
+    set steering to steer_val.
 
     wait 0.1.
 }
