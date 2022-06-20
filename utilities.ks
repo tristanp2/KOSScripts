@@ -145,7 +145,8 @@ declare function enable_stage_trigger {
 
 declare function steeringsettled {
 	declare parameter max_error to 5.
-	return abs(steeringmanager:angleerror) < max_error and abs(steeringmanager:rollerror) <  max_error.
+    set steering_vector to choose steering:forevector if steering:hassuffix("forevector") else steering.
+	return abs(steeringmanager:angleerror) < max_error and abs(steeringmanager:rollerror) <  max_error and vang(steering_vector, ship:facing:forevector) < max_error.
 }
 
 //hill climbs to find the impact time and site
