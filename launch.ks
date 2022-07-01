@@ -1,6 +1,5 @@
 runpath("utilities.ks").
 
-set launch_ongoing to true.
 set sas to false.
 set rcs to false.
 set steer_vec to lookdirup(heading(90,90):vector, ship:facing:topvector).
@@ -20,6 +19,7 @@ from {local x is 5.} until x = 0 step {set x to x-1.} do {
 
 lock ship_speed to ship:velocity:surface:mag.
 
+set enable_triggers to true.
 enable_stage_trigger().
 
 set dest_alt to 80000.
@@ -166,7 +166,7 @@ until ship:periapsis >= (dest_alt - 100) or apo_diff > 1000 {
 set thrott to 0.
 wait 1.
 
-set launch_ongoing to false.
+set enable_triggers to false.
 unlock steering.
 unlock throttle.
 
