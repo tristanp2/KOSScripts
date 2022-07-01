@@ -9,20 +9,21 @@ function set_timewarp {
 }
 function set_warp_for_eta {
     declare parameter target_eta.
+    declare parameter max_warp to 10000.
     local warp to 1.
-    if target_eta > 10000 {
+    if target_eta > 10000 and max_warp >= 10000 {
         set warp to 10000.
     }
-    else if target_eta > 1000 {
+    else if target_eta > 1000 and max_warp >= 1000 {
         set warp to 1000.
     }
-    else if target_eta > 100 {
+    else if target_eta > 100 and max_warp >= 100 {
         set warp to 100.
     }
-    else if target_eta > 50 {
+    else if target_eta > 50 and max_warp >= 50 {
         set warp to 50.
     }
-    else if target_eta > 10 {
+    else if target_eta > 10 and max_warp >= 10 {
         set warp to 10.
     }
     else {
@@ -85,10 +86,34 @@ function sample_surface_angle {
     return angle_sum / num_samples.
 }
 
+function calculate_altitude_speed {
+    declare parameter mu.
+    declare parameter distance.
+    declare parameter sma. 
+
+    // https://www.omnicalculator.com/physics/orbital-velocity
+    return sqrt(mu * max(2 / distance - 1 / sma, 0)).
+}
+
+declare function calculate_circular_speed {
+    declare parameter orbital_radius.
+    declare parameter mu.
+
+    return sqrt(mu / orbital_radius).
+}
+
 function ff_to_next_transition {
+    declare parameter target_body_name to "".
     declare parameter break_time to 10.
-    until eta:transition < break_time {
-        set_warp_for_eta(eta:transition).
+
+    set last_known_eta_time to eta:transition + time.
+    lock adjusted_eta to last_known_eta_time - time.
+    until adjusted_eta < break_time or ship:orbit:body:name = target_body_name {
+        if ship:orbit:hasnextpatch {
+            set last_known_eta_time to eta:transition + time.
+        }
+        set_warp_for_eta(adjusted_eta).
+        wait 0.1.
     }
     set_timewarp(1).
 }
@@ -136,7 +161,11 @@ declare function flameoutoccured {
 
 declare function enable_stage_trigger {
     list engines in englist.
-    when stage:ready and (flameoutoccured(englist) or maxthrust = 0) then{
+    when (stage:ready and (flameoutoccured(englist) or maxthrust = 0)) or not enable_triggers then{
+        if not enable_triggers {
+            print "disabling trigger".
+            return false.
+        }
         stage.
         list engines in englist.
         return true.
