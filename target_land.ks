@@ -18,6 +18,7 @@ clearscreen.
 print "starting descent".
 
 set target_vessel to vessel(target_vessel_name).
+set target to target_vessel.
 
 lock initial_target_pos to target_vessel:position + target_vessel:up:forevector * 3000.
 set initial_target_periapsis to target_vessel:altitude + 3000.
@@ -26,7 +27,7 @@ print "initial target periapsis: " + initial_target_periapsis.
 
 set initial_burn_lng to mod(target_vessel:geoposition:lng + 360, 360).
 
-lock lng_diff to abs(ship:geoposition:lng + 180 - initial_burn_lng).
+lock lng_diff to abs(mod(ship:geoposition:lng + 540 - initial_burn_lng, 360)).
 
 print "warping to target longitude of " + initial_burn_lng.
 
@@ -145,38 +146,47 @@ legs on.
 
 lock target_position to target_vessel:position + target_vessel:north:forevector * 10.
 lock target_distance to target_position:mag.
+lock target_eta to target_distance / vertical_speed.
 lock horizontal_target_vector to vxcl(target_vessel:up:forevector, target_position).
 lock horizontal_target_distance to horizontal_target_vector:mag.
 
-lock target_horizontal_speed to clamp(horizontal_target_distance / 10, 0 , 100).
+lock target_horizontal_speed to clamp(horizontal_target_distance / 20, 0 , 100).
 lock target_horizontal_velocity to target_horizontal_speed * horizontal_target_vector:normalized.
 
-
-lock target_vertical_speed to clamp(horizontal_target_distance / 10 - 2, -1, 0).
+set target_vertical_speed to vertical_speed. 
 
 lock target_velocity to target_horizontal_velocity + target_vertical_speed * ship:up:forevector.
 lock correction_vector to target_velocity - surface_velocity.
+lock correction_burn_time to correction_vector:mag / ship_accel.
 
-lock steer_val to lookdirup(correction_vector, ship:facing:topvector).
+lock steer_val to correction_vector.
+
+wait until steeringsettled().
 
 until ship:status = "LANDED" {
     print "target_distance: " + target_distance at (0,1).
     print "horizontal distance: " + horizontal_target_distance at (0,2).
-    print "correction vector mag: " + correction_vector:mag at (0,3).
+    print "horizontal correction vector mag: " + correction_vector:mag at (0,3).
     print "vertical speed: " + vertical_speed at (0,4).
     print "target vertical speed: " + target_vertical_speed at (0,5).
     print "horizontal speed: " + horizontal_speed at (0,6).
     print "target_horizontal_speed: " + target_horizontal_speed at (0,7).
-    if horizontal_target_distance < 10 {
-        set ideal_vertical_speed to -target_distance / 10.
-        set target_vertical_speed to choose ideal_vertical_speed if ideal_vertical_speed > vertical_speed else vertical_speed.
+
+    set ideal_vertical_speed to -target_distance / 10.
+    set target_vertical_speed to choose ideal_vertical_speed if ideal_vertical_speed > vertical_speed else vertical_speed.
+
+    if alt:radar < 10 {
+        set impact_eta to alt:radar / vertical_speed.
+        set vertical_accel to vertical_speed / impact_eta.
+        set horizontal_eta to horizontal_target_distance / horizontal_speed.
+        set horizontal_accel to horizontal_speed / horizontal_eta.
+
+        set throttle to sqrt(vertical_accel^2 + horizontal_accel^2) / ship_accel.
     }
     else {
-        set target_vertical_speed to clamp(horizontal_target_distance / 10 - 2, -1, 0).
+        set throttle to clamp(correction_burn_time, 0, 1).
+        set steering to steer_val.
     }
-
-    set throttle to clamp(correction_vector:mag / 5, 0, 1).
-    set steering to steer_val.
 
     wait 0.1.
 }
