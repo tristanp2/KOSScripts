@@ -55,17 +55,18 @@ until eta:apoapsis < 30 {
     wait 0.1.
 }
 
-set_timewarp(0).
+set_timewarp(1).
 wait 3.
 
 lock steer_val to ship:prograde.
 set steering to steer_val.
 
+set initial_eta to eta:apoapsis.
 wait 3.
 wait until steeringsettled(3).
 
 set_timewarp(5).
-wait until eta:apoapsis < 10.
+wait until eta:apoapsis < 10 or eta:apoapsis > initial_eta..
 set_timewarp(0).
 
 lock target_accel to 10 * clamp((target_radius - ship:periapsis) / target_radius, 0, 1).
