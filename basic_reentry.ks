@@ -1,10 +1,10 @@
 runpath("utilities.ks").
 
 declare parameter descent_stage to 1.
+declare parameter target_periapsis to 20000.
 
 set sas to false.
 set rcs to false.
-set target_periapsis to 40000.
 set thrott to 0.
 lock throttle to thrott.
 
@@ -27,14 +27,11 @@ set thrott to 0.
 
 wait 2.
 
-
-
 print "warping to atmo".
 
 until ship:altitude < 70000 {
-    set_warp_for_eta(eta:periapsis).
+    set_warp_for_eta(eta:periapsis - 30).
 }
-
 
 print "descending".
 
