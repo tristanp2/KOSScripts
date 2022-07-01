@@ -1,6 +1,6 @@
 runpath("utilities.ks").
 
-declare parameter max_return_orbit_periapsis to 40000.
+declare parameter max_return_orbit_periapsis to 20000.
 
 lock system_outward_vec to ship:body:position - ship:body:orbit:body:position.
 lock body_retrograde to -(ship:body:velocity:orbit:normalized - ship:body:orbit:body:velocity:orbit)..
